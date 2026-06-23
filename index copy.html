@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gossip Girl Tirana</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        :root {
+            --bg-color: #fce4ec; /* True early-2000s soft pink background */
+            --header-pink: #d81b60; /* Deep iconic magenta/pink */
+            --accent-hotpink: #ff007f;
+            --dark-luxury: #0d0d0d;
+            --card-color: #ffffff;
+            --border-color: #f48fb1;
+            --comment-bg: #fff5f8;
+        }
+
+        body {
+            font-family: 'Lucida Grande', 'Lucida Sans Unicode', 'Arial', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            color: var(--dark-luxury);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* --- THE CLASSIC 2007 BLOG HEADER BANNER --- */
+        .gossip-banner {
+            width: 100%;
+            background: linear-gradient(to bottom, #880e4f 0%, var(--header-pink) 70%, #ad1457 100%);
+            border-bottom: 4px solid var(--dark-luxury);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            text-align: center;
+            position: relative;
+            padding-top: 40px;
+            box-sizing: border-box;
+        }
+
+        /* Subtle skyline background simulation using pure CSS graphics */
+        .gossip-banner::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: repeat-x bottom;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0,20 L0,12 L5,12 L5,8 L10,8 L10,14 L15,14 L15,5 L22,5 L22,11 L28,11 L28,7 L35,7 L35,15 L42,15 L42,3 L50,3 L50,13 L58,13 L58,9 L65,9 L65,14 L73,14 L73,6 L80,6 L80,12 L88,12 L88,4 L95,4 L95,15 L100,15 L100,20 Z" fill="%230d0d0d" opacity="0.15"/></svg>');
+            background-size: 300px 60px;
+            pointer-events: none;
+        }
+
+        .gossip-banner h1 {
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            font-size: 3.8rem;
+            color: #ffffff;
+            margin: 0;
+            text-transform: lowercase;
+            letter-spacing: -2px;
+            text-shadow: 2px 2px 0px var(--dark-luxury), 4px 4px 0px rgba(0, 0, 0, 0.2);
+        }
+
+        .gossip-banner h1 span {
+            color: var(--dark-luxury);
+            font-family: 'Georgia', serif;
+            font-style: italic;
+            font-weight: normal;
+            font-size: 2.2rem;
+            display: block;
+            margin-bottom: -10px;
+            letter-spacing: 0px;
+            text-shadow: none;
+        }
+
+        .gossip-banner p {
+            font-family: 'Georgia', serif;
+            font-style: italic;
+            color: #ffdae9;
+            font-size: 1.1rem;
+            margin: 10px 0 25px 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+        }
+
+        /* --- HORIZONTAL INTEGRATED NAVBAR PANEL --- */
+        .gossip-nav-bar {
+            background: var(--dark-luxury);
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .gossip-nav-item {
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 14px 24px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-right: 1px solid #222;
+        }
+
+        .gossip-nav-item:first-child { border-left: 1px solid #222; }
+
+        .gossip-nav-item:hover, .gossip-nav-item.active {
+            background: var(--accent-hotpink);
+            color: #ffffff;
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.4);
+        }
+
+        /* --- WRAPPER FOR SIDEBAR + FEED LAYOUT --- */
+        .layout-wrapper {
+            display: flex;
+            width: 100%;
+            max-width: 980px;
+            margin: 30px 0 60px 0;
+            gap: 25px;
+            padding: 0 15px;
+            box-sizing: border-box;
+        }
+
+        /* Content Feed Section */
+        .main-content-column {
+            flex: 1;
+            min-width: 0; /* Prevents flex items from breaking bounds */
+        }
+
+        /* Classic Sidebar Panel */
+        .sidebar-column {
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        @media (max-width: 800px) {
+            .layout-wrapper { flex-direction: column; }
+            .sidebar-column { width: 100%; }
+        }
+
+        /* Sidebar Widgets */
+        .sidebar-widget {
+            background: var(--card-color);
+            border: 2px solid var(--dark-luxury);
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.05);
+        }
+
+        .sidebar-widget h3 {
+            font-family: 'Impact', sans-serif;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            color: var(--header-pink);
+            margin: 0 0 12px 0;
+            border-bottom: 2px solid var(--dark-luxury);
+            padding-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-widget p {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            margin: 0 0 10px 0;
+        }
+
+        /* Creator Box */
+        .post-creator {
+            background: var(--card-color);
+            padding: 20px;
+            border-radius: 4px;
+            border: 2px solid var(--dark-luxury);
+            margin-bottom: 30px;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.05);
+        }
+
+        .post-creator textarea {
+            font-family: sans-serif;
+            width: 100%;
+            height: 80px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+            resize: none;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+            outline: none;
+            background-color: #fffafc;
+        }
+
+        .post-creator textarea:focus {
+            border-color: var(--dark-luxury);
+        }
+
+        .preview-box {
+            display: none;
+            margin-top: 15px;
+            width: 100%;
+            max-height: 200px;
+            overflow: hidden;
+            border: 2px dashed var(--dark-luxury);
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .preview-box img, .preview-box video {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        .file-input-label {
+            background: #fff;
+            padding: 8px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: var(--dark-luxury);
+            border: 2px solid var(--dark-luxury);
+        }
+
+        .file-input-label:hover {
+            background: var(--bg-color);
+        }
+
+        #file-input { display: none; }
+
+        .post-btn {
+            background: var(--header-pink);
+            color: white;
+            border: 2px solid var(--dark-luxury);
+            padding: 8px 22px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 2px 2px 0px var(--dark-luxury);
+        }
+
+        .post-btn:hover {
+            background: var(--accent-hotpink);
+            transform: translate(-1px, -1px);
+            box-shadow: 3px 3px 0px var(--dark-luxury);
+        }
+
+        /* Secret Gossip Posts Layout */
+        .feed {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            width: 100%;
+        }
+
+        .post {
+            background: var(--card-color);
+            border-radius: 4px;
+            box-shadow: 5px 5px 0px rgba(0,0,0,0.05);
+            border: 2px solid var(--dark-luxury);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .post-header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--dark-luxury);
+            padding: 10px 15px;
+            color: #ffffff;
+        }
+
+        .post-time {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #ffb6c1;
+        }
+
+        .trending-badge {
+            background: var(--accent-hotpink);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 2px;
+        }
+
+        .post-body-content {
+            padding: 20px;
+        }
+
+        .post-text {
+            font-family: 'Georgia', serif;
+            font-size: 1.15rem;
+            line-height: 1.6;
+            word-wrap: break-word;
+            margin-bottom: 20px;
+            color: var(--dark-luxury);
+        }
+
+        .post-media {
+            margin-bottom: 20px;
+            width: 100%;
+            border-radius: 4px;
+            max-height: 400px;
+            object-fit: cover;
+            border: 2px solid var(--dark-luxury);
+        }
+
+        .post-footer {
+            display: flex;
+            justify-content: flex-start;
+            border-top: 2px dashed var(--bg-color);
+            padding-top: 15px;
+            gap: 10px;
+        }
+
+        .like-btn, .comment-toggle-btn {
+            background: #ffffff;
+            border: 2px solid var(--dark-luxury);
+            color: var(--dark-luxury);
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 4px;
+            box-shadow: 2px 2px 0px var(--dark-luxury);
+        }
+
+        .like-btn:hover, .comment-toggle-btn:hover { background: var(--bg-color); }
+        .like-btn.liked { background: var(--accent-hotpink); color: #ffffff; }
+
+        /* Comments Styling */
+        .comments-section {
+            margin-top: 15px;
+            background: var(--comment-bg);
+            border-radius: 4px;
+            padding: 12px;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            border: 2px dashed var(--border-color);
+        }
+
+        .comments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .comment-item {
+            background: var(--card-color);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            border: 1px solid #ffe2ee;
+            color: #333;
+        }
+
+        .comment-input-container {
+            display: flex;
+            gap: 8px;
+        }
+
+        .comment-input-container input {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 2px solid var(--dark-luxury);
+            outline: none;
+            font-size: 0.85rem;
+        }
+
+        .comment-submit-btn {
+            background: var(--dark-luxury);
+            color: white;
+            border: none;
+            padding: 0 14px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .loading-card {
+            background: var(--card-color);
+            padding: 30px;
+            border: 2px solid var(--dark-luxury);
+            border-radius: 4px;
+            text-align: center;
+            color: var(--header-pink);
+            font-family: 'Georgia', serif;
+            font-style: italic;
+            font-size: 1.2rem;
+        }
+
+        .progress-barrier-track {
+            width: 100%;
+            height: 6px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--dark-luxury);
+            margin-top: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-barrier-fill {
+            width: 40%;
+            height: 100%;
+            background: var(--accent-hotpink);
+            position: absolute;
+            top: 0;
+            left: -40%;
+            animation: pulseProgress 1.4s infinite linear;
+        }
+
+        @keyframes pulseProgress {
+            0% { left: -40%; }
+            100% { left: 100%; }
+        }
+
+        #map-view-container {
+            display: none; 
+            width: 100%;
+            height: 480px;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 2px solid var(--dark-luxury);
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+
+        .map-instructions {
+            background: var(--dark-luxury);
+            padding: 10px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #ffffff;
+            text-align: center;
+            text-transform: uppercase;
+        }
+    </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+    <header class="gossip-banner">
+        <h1><span>you know you love me</span>gossip girl tirana</h1>
+        <p>Spotted: Secrets on the wall. Post anonymously...</p>
+        
+        <div class="gossip-nav-bar">
+            <div class="gossip-nav-item active" id="nav-feed" onclick="switchPage('feed')">Latest Gossip</div>
+            <div class="gossip-nav-item" id="nav-top" onclick="switchPage('top')">Most Liked</div>
+            <div class="gossip-nav-item" id="nav-map" onclick="switchPage('map')">Spotted Map</div>
+        </div>
+    </header>
+
+    <div class="layout-wrapper">
+        
+        <div class="main-content-column">
+            
+            <div class="post-creator" id="creator-box">
+                <textarea id="post-text-input" placeholder="What's the latest scandal? Tell me everything..."></textarea>
+                <div id="media-preview-box" class="preview-box"></div>
+                <div class="form-actions">
+                    <label for="file-input" class="file-input-label">📸 Attach File</label>
+                    <input type="file" id="file-input" accept="image/*,video/*">
+                    <button class="post-btn" id="submit-btn" onclick="submitPost()">Post</button>
+                </div>
+            </div>
+
+            <div id="map-view-container">
+                <div class="map-instructions">📍 Click on the map grid layout to report an instant city sighting!</div>
+                <div id="live-spotted-map" style="width:100%; height:100%;"></div>
+            </div>
+
+            <div class="feed" id="forum-feed"></div>
+        </div>
+
+        <div class="sidebar-column">
+            <div class="sidebar-widget">
+                <h3>About This Board</h3>
+                <p>Welcome to the premium unverified source into the elite high school circles of Tirana. Everything you read here is anonymously submitted.</p>
+            </div>
+            <div class="sidebar-widget">
+                <h3>The Code of Conduct</h3>
+                <p>Keep the tip line hot, name-drop with style, and never get caught. <em>XOXO, Gossip Girl.</em></p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://xaxtvdsbaarpyjerlaer.supabase.co"; 
+        const SUPABASE_ANON_KEY = "sb_publishable_mwz4paRgta0EMR_fXnLV_Q_amtHQ3DS";
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let selectedFile = null;
+        let currentPage = 'feed';
+        let openCommentBoxes = new Set();
+        
+        let spottedMapObj = null;
+        let activeMapMarkers = [];
+
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const previewBox = document.getElementById('media-preview-box');
+            if (!file) {
+                previewBox.style.display = "none";
+                return;
+            }
+            selectedFile = file;
+            previewBox.innerHTML = '';
+            previewBox.style.display = "block";
+
+            const fileUrl = URL.createObjectURL(file);
+            if (file.type.startsWith('image/')) {
+                previewBox.innerHTML = `<img src="${fileUrl}">`;
+            } else if (file.type.startsWith('video/')) {
+                previewBox.innerHTML = `<video src="${fileUrl}" muted autoplay loop></video>`;
+            }
+        });
+
+        document.addEventListener("DOMContentLoaded", function() {
+            loadPosts();
+        });
+
+        function updateActiveNavState(targetId) {
+            document.getElementById('nav-feed').classList.remove('active');
+            document.getElementById('nav-top').classList.remove('active');
+            document.getElementById('nav-map').classList.remove('active');
+            document.getElementById(targetId).classList.add('active');
+        }
+
+        function switchPage(page) {
+            currentPage = page;
+            openCommentBoxes.clear();
+            
+            const creatorBox = document.getElementById('creator-box');
+            const mapContainer = document.getElementById('map-view-container');
+            const feedContainer = document.getElementById('forum-feed');
+
+            creatorBox.style.display = "none";
+            mapContainer.style.display = "none";
+            feedContainer.style.display = "none";
+
+            if (page === 'feed') {
+                updateActiveNavState('nav-feed');
+                creatorBox.style.display = "block";
+                feedContainer.style.display = "flex";
+                loadPosts();
+            } else if (page === 'top') {
+                updateActiveNavState('nav-top');
+                feedContainer.style.display = "flex";
+                loadPosts();
+            } else if (page === 'map') {
+                updateActiveNavState('nav-map');
+                mapContainer.style.display = "block";
+                setTimeout(() => { initSpottedMapWindow(); }, 100);
+            }
+        }
+
+        function initSpottedMapWindow() {
+            if (spottedMapObj) {
+                spottedMapObj.invalidateSize();
+                loadMapPinsFromServer();
+                return;
+            }
+
+            spottedMapObj = L.map('live-spotted-map').setView([41.3275, 19.8187], 14);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(spottedMapObj);
+
+            spottedMapObj.on('click', async function(e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                const targetName = prompt("Who did you spot here? (Type their name or description):");
+                if (!targetName || !targetName.trim()) return;
+
+                try {
+                    const pinPayload = {
+                        text: `Spotted: ${targetName.trim()} on the live map!`,
+                        likes: 0,
+                        comments: [],
+                        location_data: { latitude: lat, longitude: lng, label: targetName.trim() }
+                    };
+
+                    const { error } = await supabaseClient.from('posts').insert([pinPayload]);
+                    if (error) throw error;
+
+                    loadMapPinsFromServer();
+                } catch(err) {
+                    console.error("Error inserting pin coordinate row:", err);
+                    alert("Could not pin location data.");
+                }
+            });
+
+            loadMapPinsFromServer();
+        }
+
+        async function loadMapPinsFromServer() {
+            if (!spottedMapObj) return;
+            
+            activeMapMarkers.forEach(m => spottedMapObj.removeLayer(m));
+            activeMapMarkers = [];
+
+            try {
+                const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+                const { data: locations, error } = await supabaseClient
+                    .from('posts')
+                    .select('*')
+                    .gte('created_at', twoHoursAgo)
+                    .not('location_data', 'is', null);
+
+                if (error) throw error;
+
+                locations.forEach(loc => {
+                    const coords = loc.location_data;
+                    if (coords && coords.latitude && coords.longitude) {
+                        const markerDate = new Date(loc.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        
+                        const popupLayout = `
+                            <div style="font-family:sans-serif; font-size:13px; color:#1a1a1a;">
+                                <strong style="color:#ff0055; font-family:Georgia,serif; font-size:14px;">📍 Spotted</strong><br>
+                                <p style="margin:5px 0; font-weight:bold;">${escapeHTML(coords.label)}</p>
+                                <span style="font-size:11px; color:#777;">Seen at ${markerDate}</span>
+                            </div>
+                        `;
+
+                        const markerNode = L.marker([coords.latitude, coords.longitude])
+                            .addTo(spottedMapObj)
+                            .bindPopup(popupLayout);
+                        
+                        activeMapMarkers.push(markerNode);
+                    }
+                });
+            } catch(err) {
+                console.error("Error reading coordinate records:", err);
+            }
+        }
+
+        function toggleCommentsLayout(postId) {
+            const element = document.getElementById(`box-${postId}`);
+            if (element.style.display === "flex") {
+                element.style.display = "none";
+                openCommentBoxes.delete(postId);
+            } else {
+                element.style.display = "flex";
+                openCommentBoxes.add(postId);
+            }
+        }
+
+        async function submitPost() {
+            const textInput = document.getElementById('post-text-input');
+            const submitBtn = document.getElementById('submit-btn');
+            const text = textInput.value.trim();
+
+            if (!text && !selectedFile) {
+                alert("You can't post an empty secret!");
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Uploading...";
+
+            let mediaUrl = null;
+            let mediaType = null;
+
+            try {
+                if (selectedFile) {
+                    const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
+                    const fileName = `${Date.now()}_${safeName}`;
+                    
+                    const { data, error: uploadError } = await supabaseClient.storage
+                        .from('gossip-media')
+                        .upload(fileName, selectedFile, { cacheControl: '3600', upsert: false });
+
+                    if (uploadError) throw uploadError;
+
+                    const { data: publicUrlData } = supabaseClient.storage
+                        .from('gossip-media')
+                        .getPublicUrl(fileName);
+
+                    mediaUrl = publicUrlData.publicUrl;
+                    mediaType = selectedFile.type; 
+                }
+
+                const postData = { text: text, media_url: mediaUrl, likes: 0, comments: [] };
+                if (mediaType) postData.media_type = mediaType;
+
+                const { error: dbError } = await supabaseClient.from('posts').insert([postData]);
+                if (dbError) throw dbError;
+
+                textInput.value = '';
+                selectedFile = null;
+                document.getElementById('file-input').value = '';
+                document.getElementById('media-preview-box').style.display = 'none';
+
+                await loadPosts();
+
+            } catch (error) {
+                console.error("Submission error:", error);
+                alert("Something went wrong saving your post.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Post";
+            }
+        }
+
+        async function loadPosts() {
+            const feed = document.getElementById('forum-feed');
+            
+            feed.innerHTML = `
+                <div class="loading-card">
+                    Gathering the juiciest rumors...
+                    <div class="progress-barrier-track">
+                        <div class="progress-barrier-fill"></div>
+                    </div>
+                </div>
+            `;
+            
+            try {
+                const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+                let query = supabaseClient.from('posts').select('*').gte('created_at', twoHoursAgo);
+
+                if (currentPage === 'feed') {
+                    query = query.order('created_at', { ascending: false });
+                } else if (currentPage === 'top') {
+                    query = query.order('likes', { ascending: false }).order('created_at', { ascending: false });
+                }
+
+                const { data: posts, error } = await query;
+                if (error) throw error;
+
+                feed.innerHTML = '';
+
+                if (!posts || posts.length === 0) {
+                    feed.innerHTML = '<p style="text-align:center; color:#8b6c7c; font-style: italic; margin-top:20px;">No active secrets on the wall. A quiet day in Tirana? I highly doubt it...</p>';
+                    return;
+                }
+
+                posts.forEach(post => {
+                    const postElement = document.createElement('div');
+                    postElement.className = 'post';
+
+                    let mediaHTML = '';
+                    if (post.media_url) {
+                        const type = post.media_type || "";
+                        const url = post.media_url.toLowerCase();
+                        if (type.startsWith('image/') || url.match(/\.(jpeg|jpg|gif|png|webp)/)) {
+                            mediaHTML = `<img src="${post.media_url}" class="post-media" alt="Uploaded photo">`;
+                        } else if (type.startsWith('video/') || url.match(/\.(mp4|mov|webm|quicktime)/)) {
+                            mediaHTML = `<video src="${post.media_url}" class="post-media" controls></video>`;
+                        }
+                    }
+
+                    const postDate = new Date(post.created_at).toLocaleString();
+                    const hasLiked = localStorage.getItem(`liked_${post.id}`) !== null;
+                    const likeClass = hasLiked ? 'like-btn liked' : 'like-btn';
+                    const trendingBadgeHTML = (post.likes >= 5) ? `<span class="trending-badge">🔥 TRENDING</span>` : '';
+
+                    const commentArray = post.comments || [];
+                    let commentItemsHTML = '';
+                    commentArray.forEach(c => {
+                        commentItemsHTML += `<div class="comment-item">${escapeHTML(c)}</div>`;
+                    });
+
+                    const sectionDisplayState = openCommentBoxes.has(post.id) ? "display: flex;" : "display: none;";
+
+                    postElement.innerHTML = `
+                        <div class="post-header-info">
+                            <div class="post-time">BLAST FROM THE TIP LINE • ${postDate}</div>
+                            ${trendingBadgeHTML}
+                        </div>
+                        <div class="post-body-content">
+                            <div class="post-text">${escapeHTML(post.text)}</div>
+                            ${mediaHTML}
+                            <div class="post-footer">
+                                <button class="${likeClass}" onclick="likePost(${post.id}, ${post.likes || 0}, this)">
+                                    ❤️ <span class="like-count">${post.likes || 0}</span> Likes
+                                </button>
+                                <button class="comment-toggle-btn" onclick="toggleCommentsLayout(${post.id})">
+                                    💬 <span>${commentArray.length}</span> Comments
+                                </button>
+                            </div>
+                            
+                            <div class="comments-section" id="box-${post.id}" style="${sectionDisplayState}">
+                                <div class="comments-list">${commentItemsHTML}</div>
+                                <div class="comment-input-container">
+                                    <input type="text" placeholder="Add to the scandal..." id="comment-in-${post.id}">
+                                    <button class="comment-submit-btn" onclick="submitComment(${post.id}, '${escapeJS(JSON.stringify(commentArray))}')">Send</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    feed.appendChild(postElement);
+                });
+
+            } catch (error) {
+                console.error("Loading error:", error);
+                feed.innerHTML = '<p style="text-align:center; color:red; font-weight:bold; margin-top:20px;">Failed to load live feed.</p>';
+            }
+        }
+
+        async function likePost(postId, currentLikes, buttonElement) {
+            if (localStorage.getItem(`liked_${postId}`)) {
+                alert("You already liked this secret!");
+                return;
+            }
+            const likeCountSpan = buttonElement.querySelector('.like-count');
+            const newLikeCount = currentLikes + 1;
+
+            likeCountSpan.innerText = newLikeCount;
+            buttonElement.classList.add('liked');
+            localStorage.setItem(`liked_${postId}`, 'true');
+
+            try {
+                const { error } = await supabaseClient.from('posts').update({ likes: newLikeCount }).eq('id', postId);
+                if (error) throw error;
+            } catch (err) {
+                console.error("Error liking post:", err);
+                likeCountSpan.innerText = currentLikes;
+                buttonElement.classList.remove('liked');
+                localStorage.removeItem(`liked_${postId}`);
+            }
+        }
+
+        async function submitComment(postId, stringifiedOldComments) {
+            const inputField = document.getElementById(`comment-in-${postId}`);
+            const commentText = inputField.value.trim();
+            if (!commentText) return;
+
+            let commentsList = [];
+            try {
+                commentsList = JSON.parse(stringifiedOldComments);
+            } catch(e) {
+                commentsList = [];
+            }
+            commentsList.push(commentText);
+
+            try {
+                const { error } = await supabaseClient
+                    .from('posts').update({ comments: commentsList }).eq('id', postId);
+
+                if (error) throw error;
+                inputField.value = '';
+                await loadPosts(); 
+            } catch (err) {
+                console.error("Error saving comment:", err);
+                alert("Couldn't upload comment at this moment.");
+            }
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+        }
+
+        function escapeJS(str) {
+            return str.replace(/'/g, "\\u0027").replace(/"/g, "\\u0022");
+        }
+    </script>
+</body>
+</html>
