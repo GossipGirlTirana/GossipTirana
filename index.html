@@ -638,11 +638,11 @@
             activeMapMarkers = [];
 
             try {
-                const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+                const 5HoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
                 const { data: locations, error } = await supabaseClient
                     .from('posts')
                     .select('*')
-                    .gte('created_at', twoHoursAgo)
+                    .gte('created_at', 5HoursAgo)
                     .not('location_data', 'is', null);
 
                 if (error) throw error;
@@ -753,8 +753,8 @@
             `;
             
             try {
-                const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-                let query = supabaseClient.from('posts').select('*').gte('created_at', fortyEightHoursAgo);
+                const oneThousandHoursAgo = new Date(Date.now() - 1000 * 60 * 60 * 1000).toISOString();
+                let query = supabaseClient.from('posts').select('*').gte('created_at', oneThousandHoursAgo);
 
                 if (currentPage === 'feed') {
                     query = query.order('created_at', { ascending: false });
