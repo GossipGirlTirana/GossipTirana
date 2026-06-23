@@ -638,11 +638,12 @@
             activeMapMarkers = [];
 
             try {
-                const 5HoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
+                // FIXED: Changed 5HoursAgo to fiveHoursAgo
+                const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
                 const { data: locations, error } = await supabaseClient
                     .from('posts')
                     .select('*')
-                    .gte('created_at', 5HoursAgo)
+                    .gte('created_at', fiveHoursAgo)
                     .not('location_data', 'is', null);
 
                 if (error) throw error;
